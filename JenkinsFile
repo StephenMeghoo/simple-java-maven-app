@@ -5,17 +5,43 @@ pipeline {
       args '-v /root/.m2:/root/.m2' // Optional: cache Maven dependencies
     }
   }
+
+  environment {
+    GIT_CREDENTIALS_ID = 'jenkins-ssh-key' // Set this in Jenkins
+    VERSION_PREFIX = '1.0'
+  }
+
   stages {
     stage('Checkout') {
       steps {
         checkout scm
       }
     }
+
     stage('Build') {
       steps {
         sh 'mvn clean package'
       }
     }
+
+    stage('Tag Version') {
+      steps {
+        script {
+          def version = "${env.VERSION_PREFIX}.${env.BUILD_NUMBER}"
+
+          sh """
+            git config user.name "jenkins"
+            git config user.email "jenkins@yourdomain.com"
+            git tag -a ${version} -m "Auto-tagged version ${version}"
+            git push origin ${version}
+          """
+
+          currentBuild.displayName = "#${env.BUILD_NUMBER} - ${version}"
+          currentBuild.description = "Version ${version}"
+        }
+      }
+    }
+
     stage('Archive') {
       steps {
         archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true

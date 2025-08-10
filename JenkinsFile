@@ -2,29 +2,46 @@ pipeline {
   agent {
     docker {
       image 'maven:3.9.4-eclipse-temurin-17'
-      args '-v /root/.m2:/root/.m2' // Optional: cache Maven dependencies
+      args '-v /root/.m2:/root/.m2'
     }
   }
 
   environment {
-    GIT_CREDENTIALS_ID = 'jenkins-ssh-key' // Set this in Jenkins
     VERSION_PREFIX = '1.0'
+    GIT_CREDENTIALS_ID = 'a59e96ae-2659-44a9-ad55-21e9c5b47a65'
+    GIT_REPO = 'git@github.com:StephenMeghoo/simple-java-maven-app.git'
   }
 
   stages {
-    stage('Checkout') {
-  steps {
-    checkout([
-      $class: 'GitSCM',
-      branches: [[name: '*/main']],
-      userRemoteConfigs: [[
-  url: 'git@github.com:StephenMeghoo/simple-java-maven-app.git',
-  credentialsId: 'a59e96ae-2659-44a9-ad55-21e9c5b47a65'
-]]
+    stage('Prepare SSH') {
+      steps {
+        // This runs on the Jenkins agent (outside container)
+        sh '''
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
 
-    ])
-  }
-}
+          # Trust GitHub's ED25519 host key
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+          # Optional: disable strict checking (use with caution)
+          echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+        '''
+      }
+    }
+
+    stage('Checkout') {
+      steps {
+        checkout([
+          $class: 'GitSCM',
+          branches: [[name: '*/main']],
+          userRemoteConfigs: [[
+            url: "${env.GIT_REPO}",
+            credentialsId: "${env.GIT_CREDENTIALS_ID}"
+          ]]
+        ])
+      }
+    }
 
     stage('Build') {
       steps {

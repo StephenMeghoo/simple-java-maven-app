@@ -13,10 +13,18 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
-    }
+  steps {
+    checkout([
+      $class: 'GitSCM',
+      branches: [[name: '*/main']],
+      userRemoteConfigs: [[
+  url: 'git@github.com:StephenMeghoo/simple-java-maven-app.git',
+  credentialsId: 'a59e96ae-2659-44a9-ad55-21e9c5b47a65'
+]]
+
+    ])
+  }
+}
 
     stage('Build') {
       steps {
